@@ -5,7 +5,7 @@ const APIClient = axios.create({
     baseURL: SERVER_ENDPOINT
 });
 
-export const get = async (path: any, formData: any) => {
+export const get = async (path: any, formData = {}) => {
     const response = await APIClient.get(path, formData);
     return response.data;
 };
@@ -18,7 +18,7 @@ export const remove = async (path: any, options = {}) => {
     return response.data;
 };
 export const update = async (path: any, formData: any, options = {}) => {
-    const response = await APIClient.patch(path, formData, options);
+    const response = await APIClient.put(path, formData, options);
     return response;
 };
 

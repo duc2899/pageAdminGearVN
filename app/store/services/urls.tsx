@@ -10,3 +10,20 @@ export enum Account_Services {
     ADD_USER = '/accountUsers',
     CHECK_EMAIL = '/accountUsers/'
 }
+
+export enum Product_Services {
+    GET_PRODUCT = '/product',
+    ADD_PRODUCT = '/product',
+    REMOVE_PRODUCT = '/product',
+    EDIT_PRODUCT = '/product'
+}
+
+export enum Category_Services {
+    GET_CATEGORY = '/category',
+    ADD_CATEGORY = '/category'
+}
+
+export enum Producer_Services {
+    GET_PRODUCER = '/producer',
+    ADD_PRODUCER = '/producer'
+}

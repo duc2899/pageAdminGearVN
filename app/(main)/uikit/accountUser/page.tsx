@@ -4,19 +4,14 @@ import { Column } from 'primereact/column';
 import { DataTable, DataTableFilterMeta } from 'primereact/datatable';
 import { InputText } from 'primereact/inputtext';
 import React, { useEffect, useRef, useState } from 'react';
-import { FilterMatchMode, FilterOperator } from 'primereact/api';
+import { FilterMatchMode } from 'primereact/api';
 import type { Demo } from '../../../../types/types';
-import { Password } from 'primereact/password';
 import { Dialog } from 'primereact/dialog';
-import avatarDefault from '../../../store/images/avatarDefault.jpg';
-import Image from 'next/image';
-import { FileUpload } from 'primereact/fileupload';
 import { useForm, SubmitHandler, Form } from 'react-hook-form';
 import { Button } from 'primereact/button';
 import { useDebounce } from 'primereact/hooks';
 import { Toast } from 'primereact/toast';
 import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog';
-import { error } from 'console';
 import { Dropdown } from 'primereact/dropdown';
 import { Tooltip } from 'primereact/tooltip';
 
@@ -45,7 +40,6 @@ const TableDemo = () => {
     });
     const [loading1, setLoading1] = useState(true);
     const [globalFilterValue1, setGlobalFilterValue1] = useState('');
-    const [avatar, setAvatar] = useState('');
     const [email, debouncedValue, setEmail] = useDebounce('', 1000);
     const [isExitEmail, setIsExitEmail] = useState(false);
     const [isEditUser, setIsEditUser] = useState<boolean>(false);
@@ -118,47 +112,47 @@ const TableDemo = () => {
                             AccountAPi.getListUsers().then((data) => {
                                 setCustomers(data.filter((d) => d.role === 'USER'));
                             });
+                            return;
                         }
                     })
                     .catch((error) => error && toast.current?.show({ severity: 'error', summary: 'Error', detail: 'Something wrong in server', life: 3000 }));
-            }
-            data.isActive = selectedStatus;
-            const { role, id, createdAt, ...rest } = dataUserOld;
-            const { confirmPassword, ...newData } = data;
-            if (_.isEqual(rest, newData)) {
-                reset();
-                setModalAddUser(false);
-                toast.current?.show({ severity: 'info', summary: 'Information', detail: 'Nothing changes', life: 3000 });
+                return;
             } else {
-                const dataUserEdit: InterfaceAccountUser.EditUser = {
-                    id: id,
-                    name: newData.name,
-                    email: newData.email,
-                    password: newData.password,
-                    phoneNumber: newData.phoneNumber,
-                    isActive: newData.isActive
-                };
-                AccountAPi.editUser(dataUserEdit)
-                    .then((data) => {
-                        if (data.status === 200) {
-                            reset();
-                            setModalAddUser(false);
-                            AccountAPi.getListUsers().then((data) => {
-                                setCustomers(data.filter((d) => d.role === 'USER'));
-                            });
-                            toast.current?.show({ severity: 'success', summary: 'Success', detail: 'Edit a user success', life: 3000 });
-                        }
-                    })
-                    .catch((err) => {
-                        toast.current?.show({ severity: 'error', summary: 'Error', detail: 'Fault to edit user', life: 3000 });
-                        console.log(err);
-                    });
+                data.isActive = selectedStatus;
+                const { role, id, createdAt, ...rest } = dataUserOld;
+                const { confirmPassword, ...newData } = data;
+                if (_.isEqual(rest, newData)) {
+                    reset();
+                    setModalAddUser(false);
+                    toast.current?.show({ severity: 'info', summary: 'Information', detail: 'Nothing changes', life: 3000 });
+                    return;
+                } else {
+                    const dataUserEdit: InterfaceAccountUser.EditUser = {
+                        id: id,
+                        userName: newData.name,
+                        email: newData.email,
+                        password: newData.password,
+                        phoneNumber: newData.phoneNumber,
+                        isActive: newData.isActive
+                    };
+                    AccountAPi.editUser(dataUserEdit)
+                        .then((data) => {
+                            if (data.status === 200) {
+                                reset();
+                                setModalAddUser(false);
+                                AccountAPi.getListUsers().then((data) => {
+                                    setCustomers(data.filter((d) => d.role === 'USER'));
+                                });
+                                toast.current?.show({ severity: 'success', summary: 'Success', detail: 'Edit a user success', life: 3000 });
+                            }
+                        })
+                        .catch((err) => {
+                            toast.current?.show({ severity: 'error', summary: 'Error', detail: 'Fault to edit user', life: 3000 });
+                            console.log(err);
+                        });
+                }
             }
         }
-    };
-
-    const handelSelectImage = (e: any) => {
-        setAvatar(e.files[0].objectURL);
     };
 
     useEffect(() => {
@@ -258,7 +252,7 @@ const TableDemo = () => {
             <Dialog
                 header={`${isEditUser ? 'Edit user' : 'Add new user'}`}
                 visible={modalAddUser}
-                style={{ width: '50vw' }}
+                className="w-6"
                 onHide={() => {
                     setModalAddUser(false), isEditUser && setIsEditUser(false), reset(), setIsExitEmail(false);
                 }}
@@ -351,10 +345,6 @@ const TableDemo = () => {
                             <Button label="Submit" className="flex align-items-center justify-content-center" />
                         </div>
                     </form>
-                    <div className="w-6 flex align-items-center justify-content-center flex-column">
-                        <Image src={avatar ? avatar : avatarDefault} alt="default avatar" width={200} height={200} className="border-circle" style={{ objectFit: `cover` }} />
-                        <FileUpload mode="basic" name="avatar" url="/api/upload" accept="image/*" maxFileSize={1000000} className="mt-6" chooseLabel="Upload image" onSelect={handelSelectImage} />
-                    </div>
                 </div>
             </Dialog>
         </div>

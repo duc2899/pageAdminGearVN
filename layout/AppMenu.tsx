@@ -22,7 +22,7 @@ const AppMenu = () => {
         },
         {
             label: 'Manager Products',
-            items: [{ label: 'Products', icon: <KeyboardIcon></KeyboardIcon>, to: '/uikit/products', badge: 'NEW' }]
+            items: [{ label: 'Products', icon: 'pi pi-database', to: '/uikit/products', badge: 'NEW' }]
         }
         // {
         //     label: 'Utilities',

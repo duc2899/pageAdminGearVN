@@ -5,35 +5,174 @@ import { Column } from 'primereact/column';
 import { DataTable } from 'primereact/datatable';
 import { Dialog } from 'primereact/dialog';
 import { FileUpload } from 'primereact/fileupload';
-import { InputNumber, InputNumberValueChangeEvent } from 'primereact/inputnumber';
 import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { RadioButton, RadioButtonChangeEvent } from 'primereact/radiobutton';
 import { Rating } from 'primereact/rating';
 import { Toast } from 'primereact/toast';
 import { Toolbar } from 'primereact/toolbar';
-import { classNames } from 'primereact/utils';
 import React, { useEffect, useRef, useState } from 'react';
-import { ProductService } from '../../../../demo/service/ProductService';
+import { ProductAPi } from '../../../store/services/ProductServices/ProductAPI';
 import { Demo } from '../../../../types/types';
+import { Tag } from 'primereact/tag';
+import { Dropdown } from 'primereact/dropdown';
+import { Tooltip } from 'primereact/tooltip';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { InputNumber } from 'primereact/inputnumber';
+import { classNames } from 'primereact/utils';
+import { Paginator } from 'primereact/paginator';
+import { RadioButton } from 'primereact/radiobutton';
+import { CategoryAPI } from '../../../store/services/CategoryServices/CategoryAPI';
+import { Category, Producer } from '../../../../types/demo';
+import { ProducerAPI } from '../../../store/services/ProducerServices/ProducerAPI';
+import ActionsProduct from './ActionsProduct';
+import { Controller, SubmitHandler, useForm } from 'react-hook-form';
+
+interface Category {
+    name: string;
+    code: number;
+}
+
+interface Option {
+    name: string;
+    value: boolean;
+}
 
 /* @todo Used 'as any' for types here. Will fix in next version due to onSelectionChange event type issue. */
 const Crud = () => {
-    const [products, setProducts] = useState(null);
+    const laptopProperties = [
+        {
+            id: 1,
+            name: 'cpu',
+            isText: false
+        },
+        {
+            id: 2,
+            name: 'ram',
+            isText: false
+        },
+        {
+            id: 3,
+            name: 'ssd',
+            isText: false
+        },
+        {
+            id: 4,
+            name: 'vga',
+            isText: false
+        },
+        {
+            id: 5,
+            name: 'size',
+            isText: false
+        },
+        {
+            id: 6,
+            name: 'screen',
+            isText: false
+        },
+        {
+            id: 7,
+            name: 'color',
+            isText: false
+        },
+        {
+            id: 8,
+            name: 'operatingSystem',
+            isText: false
+        }
+    ];
+    const mouseProperties = [
+        {
+            id: 1,
+            name: 'dpi',
+            isText: false
+        },
+        {
+            id: 2,
+            name: 'size',
+            isText: false
+        },
+        {
+            id: 3,
+            name: 'connection',
+            isText: true
+        },
+        {
+            id: 4,
+            name: 'charger',
+            isText: true
+        },
+        {
+            id: 5,
+            name: 'rgb',
+            isText: true
+        },
+        {
+            id: 6,
+            name: 'color',
+            isText: false
+        }
+    ];
+    const PROPERTIES = [laptopProperties, mouseProperties];
+    const types: Category[] = [
+        { name: 'Laptop', code: 1 },
+        { name: 'Mouse', code: 2 },
+        { name: 'Keyboard', code: 3 }
+    ];
+    const options: Option[] = [
+        {
+            name: 'Có',
+            value: true
+        },
+        {
+            name: 'Không',
+            value: false
+        }
+    ];
+
+    const [products, setProducts] = useState<Demo.ListProduct>();
+    const [categories, setCategories] = useState<Category.Category[]>([]);
+    const [producers, setProducers] = useState<Producer.Producer[]>([]);
     const [productDialog, setProductDialog] = useState(false);
-    const [deleteProductDialog, setDeleteProductDialog] = useState(false);
+    const [newProductDialog, setNewProductDialog] = useState(false);
     const [deleteProductsDialog, setDeleteProductsDialog] = useState(false);
-    const [product, setProduct] = useState<Demo.LaptopProduct[]>([]);
+    const [product, setProduct] = useState<Demo.Product | undefined>();
     const [selectedProducts, setSelectedProducts] = useState(null);
-    const [submitted, setSubmitted] = useState(false);
     const [globalFilter, setGlobalFilter] = useState('');
+    const [currentPage, setCurrentPage] = useState<number>(0);
+    const [size, setSize] = useState<number>(2);
+    const [rows, setRows] = useState<number>(2);
+    const [fist, setFirst] = useState<number>(0);
+    const [selectedType, setSelectedType] = useState<Category | null>(types[0]);
+    const [selectCategory, setSelectCategory] = useState<Category | null>(types[0]);
+    const [selectProducer, setSelectProducer] = useState<number | undefined>();
+
+    const [selectedOptions, setSelectedOptions] = useState<Option | null>(options[0]);
+    const {
+        register,
+        handleSubmit,
+        watch,
+        reset,
+        control,
+        setValue,
+        formState: { errors }
+    } = useForm<Demo.ProductRequest>();
+
     const toast = useRef<Toast>(null);
     const dt = useRef<DataTable<any>>(null);
 
     useEffect(() => {
-        ProductService.getProducts().then((data) => setProducts(data as any));
+        ProductAPi.getProduct({
+            page: currentPage,
+            size: size,
+            type: selectedType?.code
+        }).then((data) => {
+            setProducts(data);
+        });
+    }, [selectedType, currentPage, size]);
+    useEffect(() => {
+        CategoryAPI.getCategory().then((data) => setCategories(data));
+        ProducerAPI.getProducer().then((data) => setProducers(data));
     }, []);
-
     const formatCurrency = (value: number) => {
         return value.toLocaleString('en-US', {
             style: 'currency',
@@ -42,100 +181,11 @@ const Crud = () => {
     };
 
     const openNew = () => {
-        // setProduct(emptyProduct);
-        setSubmitted(false);
-        setProductDialog(true);
-    };
-
-    const hideDialog = () => {
-        setSubmitted(false);
-        setProductDialog(false);
-    };
-
-    const hideDeleteProductDialog = () => {
-        setDeleteProductDialog(false);
+        setNewProductDialog(true);
     };
 
     const hideDeleteProductsDialog = () => {
         setDeleteProductsDialog(false);
-    };
-
-    // const saveProduct = () => {
-    //     setSubmitted(true);
-
-    //     if (product.name.trim()) {
-    //         let _products = [...(products as any)];
-    //         let _product = { ...product };
-    //         if (product.id) {
-    //             const index = findIndexById(product.id);
-
-    //             _products[index] = _product;
-    //             toast.current?.show({
-    //                 severity: 'success',
-    //                 summary: 'Successful',
-    //                 detail: 'Product Updated',
-    //                 life: 3000
-    //             });
-    //         } else {
-    //             _product.id = createId();
-    //             _product.image = 'product-placeholder.svg';
-    //             _products.push(_product);
-    //             toast.current?.show({
-    //                 severity: 'success',
-    //                 summary: 'Successful',
-    //                 detail: 'Product Created',
-    //                 life: 3000
-    //             });
-    //         }
-
-    //         setProducts(_products as any);
-    //         setProductDialog(false);
-    //         setProduct(emptyProduct);
-    //     }
-    // };
-
-    // const editProduct = (product: Demo.Product) => {
-    //     setProduct({ ...product });
-    //     setProductDialog(true);
-    // };
-
-    // const confirmDeleteProduct = (product: Demo.Product) => {
-    //     setProduct(product);
-    //     setDeleteProductDialog(true);
-    // };
-
-    // const deleteProduct = () => {
-    //     let _products = (products as any)?.filter((val: any) => val.id !== product.id);
-    //     setProducts(_products);
-    //     setDeleteProductDialog(false);
-    //     // setProduct(emptyProduct);
-    //     toast.current?.show({
-    //         severity: 'success',
-    //         summary: 'Successful',
-    //         detail: 'Product Deleted',
-    //         life: 3000
-    //     });
-    // };
-
-    const findIndexById = (id: string) => {
-        let index = -1;
-        for (let i = 0; i < (products as any)?.length; i++) {
-            if ((products as any)[i].id === id) {
-                index = i;
-                break;
-            }
-        }
-
-        return index;
-    };
-
-    const createId = () => {
-        let id = '';
-        let chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        for (let i = 0; i < 5; i++) {
-            id += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return id;
     };
 
     const exportCSV = () => {
@@ -159,34 +209,11 @@ const Crud = () => {
         });
     };
 
-    // const onCategoryChange = (e: RadioButtonChangeEvent) => {
-    //     let _product = { ...product };
-    //     _product['category'] = e.value;
-    //     setProduct(_product);
-    // };
-
-    // const onInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, name: string) => {
-    //     const val = (e.target && e.target.value) || '';
-    //     let _product = { ...product };
-    //     _product[`${name}`] = val;
-
-    //     setProduct(_product);
-    // };
-
-    // const onInputNumberChange = (e: InputNumberValueChangeEvent, name: string) => {
-    //     const val = e.value || 0;
-    //     let _product = { ...product };
-    //     _product[`${name}`] = val;
-
-    //     setProduct(_product);
-    // };
-
     const leftToolbarTemplate = () => {
         return (
             <React.Fragment>
                 <div className="my-2">
                     <Button label="New" icon="pi pi-plus" severity="success" className=" mr-2" onClick={openNew} />
-                    <Button label="Delete" icon="pi pi-trash" severity="danger" onClick={confirmDeleteSelected} disabled={!selectedProducts || !(selectedProducts as any).length} />
                 </div>
             </React.Fragment>
         );
@@ -195,83 +222,12 @@ const Crud = () => {
     const rightToolbarTemplate = () => {
         return (
             <React.Fragment>
+                <Dropdown value={selectedType} onChange={(e: any) => setSelectedType(e.value)} options={types} optionLabel="name" placeholder="Select a type" className="w-full md:w-14rem mr-3" />
                 <FileUpload mode="basic" accept="image/*" maxFileSize={1000000} chooseLabel="Import" className="mr-2 inline-block" />
                 <Button label="Export" icon="pi pi-upload" severity="help" onClick={exportCSV} />
             </React.Fragment>
         );
     };
-
-    // const codeBodyTemplate = (rowData: Demo.Product) => {
-    //     return (
-    //         <>
-    //             <span className="p-column-title">Code</span>
-    //             {rowData.code}
-    //         </>
-    //     );
-    // };
-
-    // const nameBodyTemplate = (rowData: Demo.Product) => {
-    //     return (
-    //         <>
-    //             <span className="p-column-title">Name</span>
-    //             {rowData.name}
-    //         </>
-    //     );
-    // };
-
-    // const imageBodyTemplate = (rowData: Demo.Product) => {
-    //     return (
-    //         <>
-    //             <span className="p-column-title">Image</span>
-    //             <img src={`/demo/images/product/${rowData.image}`} alt={rowData.image} className="shadow-2" width="100" />
-    //         </>
-    //     );
-    // };
-
-    // const priceBodyTemplate = (rowData: Demo.Product) => {
-    //     return (
-    //         <>
-    //             <span className="p-column-title">Price</span>
-    //             {formatCurrency(rowData.price as number)}
-    //         </>
-    //     );
-    // };
-
-    // const categoryBodyTemplate = (rowData: Demo.Product) => {
-    //     return (
-    //         <>
-    //             <span className="p-column-title">Category</span>
-    //             {rowData.category}
-    //         </>
-    //     );
-    // };
-
-    // const ratingBodyTemplate = (rowData: Demo.Product) => {
-    //     return (
-    //         <>
-    //             <span className="p-column-title">Reviews</span>
-    //             <Rating value={rowData.rating} readOnly cancel={false} />
-    //         </>
-    //     );
-    // };
-
-    // const statusBodyTemplate = (rowData: Demo.Product) => {
-    //     return (
-    //         <>
-    //             <span className="p-column-title">Status</span>
-    //             <span className={`product-badge status-${rowData.inventoryStatus?.toLowerCase()}`}>{rowData.inventoryStatus}</span>
-    //         </>
-    //     );
-    // };
-
-    // const actionBodyTemplate = (rowData: Demo.Product) => {
-    //     return (
-    //         <>
-    //             <Button icon="pi pi-pencil" rounded severity="success" className="mr-2" onClick={() => editProduct(rowData)} />
-    //             <Button icon="pi pi-trash" rounded severity="warning" onClick={() => confirmDeleteProduct(rowData)} />
-    //         </>
-    //     );
-    // };
 
     const header = (
         <div className="flex flex-column md:flex-row md:justify-content-between md:align-items-center">
@@ -283,25 +239,77 @@ const Crud = () => {
         </div>
     );
 
-    const productDialogFooter = (
-        <>
-            <Button label="Cancel" icon="pi pi-times" text onClick={hideDialog} />
-            <Button label="Save" icon="pi pi-check" text />
-        </>
-    );
-    const deleteProductDialogFooter = (
-        <>
-            <Button label="No" icon="pi pi-times" text onClick={hideDeleteProductDialog} />
-            <Button label="Yes" icon="pi pi-check" text />
-        </>
-    );
     const deleteProductsDialogFooter = (
         <>
             <Button label="No" icon="pi pi-times" text onClick={hideDeleteProductsDialog} />
             <Button label="Yes" icon="pi pi-check" text onClick={deleteSelectedProducts} />
         </>
     );
+    const priceBodyTemplate = (product: any) => {
+        return <p>{formatCurrency(product.oldPrice)}</p>;
+    };
+    //  StartBodyTemplate
+    function CalculateStars(data: Demo.Product) {
+        const totalStars = data?.dataFeedback.reduce((total, current) => {
+            return total + current.star;
+        }, 0);
+        const res: number | undefined = totalStars / data?.dataFeedback.length;
+        return res ? Math.floor(res) : 0;
+    }
+    const ratingBodyTemplate = (product: Demo.Product) => {
+        return <Rating value={CalculateStars(product)} color="#1E9800" readOnly cancel={false} />;
+    };
+    // StatusBodyTemplate
+    const statusBodyTemplate = (product: Demo.Product) => {
+        return <Tag value={product.quantity! <= 0 ? 'LOWSTOCK' : 'INSTOCK'} severity={product.quantity! <= 0 ? 'danger' : 'success'}></Tag>;
+    };
+    // ImageBodyTemplate
+    const imageBodyTemplate = (product: Demo.Product) => {
+        return <img src={`${product.image}`} alt={product.title} className="w-7rem shadow-2 border-round" />;
+    };
+    // ActionsBodyTemplate
+    const actionBodyTemplate = (product: Demo.Product) => {
+        return (
+            <div className="flex justify-content-center align-items-center	gap-3">
+                <div style={{ marginTop: `0.5px` }} className="cursor-pointer text-yellow-500">
+                    <Tooltip target=".edit-user" />
+                    <i className="edit-user pi pi-file-edit" data-pr-tooltip="Edit product" data-pr-position="top" style={{ fontSize: '1.2rem' }} />
+                </div>
+                <div className="cursor-pointer text-red-500">
+                    <Tooltip target=".delete-user" />
+                    <i className="delete-user pi pi-trash" data-pr-tooltip="Delete product" data-pr-position="top" style={{ fontSize: '1.2rem' }} />
+                </div>
+                <div
+                    className="cursor-pointer text-blue-500"
+                    onClick={() => {
+                        setProduct(product), setProductDialog(true);
+                    }}
+                >
+                    <Tooltip target=".delete-user" />
+                    <i className="delete-user pi pi-external-link" data-pr-tooltip="Detail product" data-pr-position="top" style={{ fontSize: '1.2rem' }} />
+                </div>
+            </div>
+        );
+    };
 
+    const onPageChange = (event: any) => {
+        setFirst(event.first);
+        setRows(event.rows);
+        setCurrentPage(event.page);
+        setSize(event.pageCount);
+    };
+    // FooterDialogBodyTemplate
+    const footerBodyTemplate = () => {
+        return (
+            <div>
+                <Button label="Cancel" icon="pi pi-times" className="p-button-text" onClick={() => setNewProductDialog(false)} />
+                <Button label="Add" type="submit" icon="pi pi-check" autoFocus onClick={handleSubmit(onSubmit)} />
+            </div>
+        );
+    };
+    const onSubmit: SubmitHandler<Demo.ProductRequest> = (data) => {
+        console.log(data);
+    };
     return (
         <div className="grid crud-demo">
             <div className="col-12">
@@ -311,86 +319,127 @@ const Crud = () => {
 
                     <DataTable
                         ref={dt}
-                        value={products}
+                        value={products?.data}
                         selection={selectedProducts}
                         onSelectionChange={(e) => setSelectedProducts(e.value as any)}
                         dataKey="id"
-                        paginator
                         rows={10}
                         rowsPerPageOptions={[5, 10, 25]}
                         className="datatable-responsive"
-                        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                        // paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                         currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
                         globalFilter={globalFilter}
                         emptyMessage="No products found."
                         header={header}
                         responsiveLayout="scroll"
                     >
-                        <Column selectionMode="multiple" headerStyle={{ width: '4rem' }}></Column>
-                        <Column field="id" header="ID" sortable headerStyle={{ minWidth: '15rem' }}></Column>
-                        <Column field="name" header="Name" sortable headerStyle={{ minWidth: '15rem' }}></Column>
-                        <Column header="Image"></Column>
-                        <Column field="price" header="Price" sortable></Column>
-                        <Column field="category" header="Category" sortable headerStyle={{ minWidth: '10rem' }}></Column>
-                        <Column field="rating" header="Reviews" sortable></Column>
-                        <Column field="inventoryStatus" header="Status" sortable headerStyle={{ minWidth: '10rem' }}></Column>
-                        <Column headerStyle={{ minWidth: '10rem' }}></Column>
+                        <Column field="id" header="ID" sortable></Column>
+                        <Column field="title" header="Name" sortable headerStyle={{ minWidth: '20rem' }}></Column>
+                        <Column header="Price" sortable body={priceBodyTemplate} align={'center'}></Column>
+                        <Column header="Image" body={imageBodyTemplate} headerStyle={{ minWidth: '13rem' }} align={'center'}></Column>
+                        <Column field="saleRate" header="SaleRate" sortable align={'center'}></Column>
+                        <Column field="quantity" header="Quantity" sortable align={'center'}></Column>
+                        <Column header="Status" sortable body={statusBodyTemplate} align={'center'}></Column>
+                        <Column field="producer" header="Producer" sortable align={'center'}></Column>
+                        <Column field="type" header="Category" sortable align={'center'}></Column>
+                        <Column header="Rating" sortable body={ratingBodyTemplate} align={'center'}></Column>
+                        <Column header="Actions" sortable body={actionBodyTemplate} align={'center'}></Column>
                     </DataTable>
+                    <Paginator first={fist} rows={rows} totalRecords={products?.totalElements} onPageChange={onPageChange} />
 
-                    {/* <Dialog visible={productDialog} style={{ width: '450px' }} header="Product Details" modal className="p-fluid" footer={productDialogFooter} onHide={hideDialog}>
-                        {product.image && <img src={`/demo/images/product/${product.image}`} alt={product.image} width="150" className="mt-0 mx-auto mb-5 block shadow-2" />}
-                        <div className="field">
-                            <label htmlFor="name">Name</label>
-                            <InputText
-                                id="name"
-                                value={product.name}
-                                onChange={(e) => onInputChange(e, 'name')}
-                                required
-                                autoFocus
-                                className={classNames({
-                                    'p-invalid': submitted && !product.name
-                                })}
-                            />
-                            {submitted && !product.name && <small className="p-invalid">Name is required.</small>}
-                        </div>
-                        <div className="field">
-                            <label htmlFor="description">Description</label>
-                            <InputTextarea id="description" value={product.description} onChange={(e) => onInputChange(e, 'description')} required rows={3} cols={20} />
-                        </div>
+                    <Dialog visible={newProductDialog} header="Add New A Product" modal className="p-fluid w-6" onHide={() => setNewProductDialog(false)} footer={footerBodyTemplate}>
+                        <form>
+                            <div className="field">
+                                <label htmlFor="name" className="font-medium">
+                                    Title
+                                </label>
+                                <InputText id="name" {...register('title', { required: 'Title is required' })} />
+                                {errors.title?.type === 'required' && <p className="text-red-500">{errors.title.message}</p>}
+                            </div>
 
-                        <div className="field">
-                            <label className="mb-3">Category</label>
+                            <div className="field">
+                                <label htmlFor="description" className="font-medium">
+                                    Description
+                                </label>
+                                <InputTextarea id="description" {...register('description', { required: 'Description is required' })} rows={3} cols={20} />
+                                {errors.description?.type === 'required' && <p className="text-red-500">{errors.description.message}</p>}
+                            </div>
+
+                            <div className="field">
+                                <label className="mb-3 font-medium">Category</label>
+                                <div className="formgrid grid">
+                                    {categories?.map((category) => (
+                                        <div className="field-radiobutton col-6" key={category.id}>
+                                            <RadioButton inputId={category.name} value={category.id} name="category" onChange={(e) => setSelectCategory({ code: e.value, name: category.name })} checked={selectCategory?.code == category.id} />
+                                            <label htmlFor={category.name} className="cursor-pointer">
+                                                {category.name}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="field">
+                                <label className="mb-3 font-medium">Producer</label>
+                                <Controller
+                                    control={control}
+                                    name="idProducer"
+                                    rules={{ required: 'Producer is required' }}
+                                    render={({ field }) => (
+                                        <div className="formgrid grid">
+                                            {producers.map((producer) => (
+                                                <div className="field-radiobutton col-6" key={producer.id}>
+                                                    <RadioButton inputId={producer.name} {...field} value={producer.id} inputRef={field.ref} name="category" checked={producer.id == field.value} />
+                                                    <label htmlFor={producer.name} className="cursor-pointer">
+                                                        {producer.name}
+                                                    </label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                ></Controller>
+
+                                {errors.idProducer?.type === 'required' && <p className="text-red-500">{errors.idProducer.message}</p>}
+                            </div>
+
                             <div className="formgrid grid">
-                                <div className="field-radiobutton col-6">
-                                    <RadioButton inputId="category1" name="category" value="Accessories" onChange={onCategoryChange} checked={product.category === 'Accessories'} />
-                                    <label htmlFor="category1">Accessories</label>
+                                <div className="field col">
+                                    <label htmlFor="price" className="font-medium">
+                                        Price
+                                    </label>
+                                    <InputNumber id="price" mode="currency" currency="VND" locale="en-US" />
                                 </div>
-                                <div className="field-radiobutton col-6">
-                                    <RadioButton inputId="category2" name="category" value="Clothing" onChange={onCategoryChange} checked={product.category === 'Clothing'} />
-                                    <label htmlFor="category2">Clothing</label>
-                                </div>
-                                <div className="field-radiobutton col-6">
-                                    <RadioButton inputId="category3" name="category" value="Electronics" onChange={onCategoryChange} checked={product.category === 'Electronics'} />
-                                    <label htmlFor="category3">Electronics</label>
-                                </div>
-                                <div className="field-radiobutton col-6">
-                                    <RadioButton inputId="category4" name="category" value="Fitness" onChange={onCategoryChange} checked={product.category === 'Fitness'} />
-                                    <label htmlFor="category4">Fitness</label>
+                                <div className="field col">
+                                    <label htmlFor="quantity" className="font-medium">
+                                        Quantity
+                                    </label>
+                                    <InputNumber id="quantity" />
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="formgrid grid">
-                            <div className="field col">
-                                <label htmlFor="price">Price</label>
-                                <InputNumber id="price" value={product.price} onValueChange={(e) => onInputNumberChange(e, 'price')} mode="currency" currency="USD" locale="en-US" />
+                            <div className="formgrid grid">
+                                {PROPERTIES[selectCategory?.code! - 1].map((property) => (
+                                    <div className="col-6 mt-2" key={property.id}>
+                                        {!property.isText ? (
+                                            <div>
+                                                <label htmlFor={property.name} className="font-medium text-transform: capitalize">
+                                                    {property.name}
+                                                </label>
+                                                <InputText className=" mr-3 mt-2" />
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <label htmlFor={property.name} className="font-medium text-transform: capitalize">
+                                                    {property.name}
+                                                </label>
+                                                <Dropdown value={selectedOptions} onChange={(e: any) => setSelectedOptions(e.value)} options={options} optionLabel={'name'} placeholder="Select a type" className="w-full mr-3 mt-2" />
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
-                            <div className="field col">
-                                <label htmlFor="quantity">Quantity</label>
-                                <InputNumber id="quantity" value={product.quantity} onValueChange={(e) => onInputNumberChange(e, 'quantity')} />
-                            </div>
-                        </div>
-                    </Dialog> */}
+                        </form>
+                    </Dialog>
+                    <ActionsProduct product={product} productDialog={productDialog} setProductDialog={setProductDialog}></ActionsProduct>
 
                     {/* <Dialog visible={deleteProductDialog} style={{ width: '450px' }} header="Confirm" modal footer={deleteProductDialogFooter} onHide={hideDeleteProductDialog}>
                         <div className="flex align-items-center justify-content-center">

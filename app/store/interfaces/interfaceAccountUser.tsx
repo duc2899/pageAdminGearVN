@@ -7,7 +7,7 @@ declare namespace InterfaceAccountUser {
     }
     interface EditUser {
         id: Number;
-        name: String;
+        userName: String;
         email: String;
         password: String;
         phoneNumber: String;
