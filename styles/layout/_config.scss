@@ -52,3 +52,19 @@
         }
     }
 } 
+#password {
+  width: 100% !important;
+}
+input{
+  width: 100% !important;
+}
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Works for Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}

@@ -12,7 +12,7 @@ export const AccountAPi = {
     checkEmail(data: String) {
         return APIClient.get(Account_Services.CHECK_EMAIL + data);
     },
-    deleteUser(id: Number) {
+    deleteUser(id: number) {
         return APIClient.remove(Account_Services.DELETE_USER + id);
     },
     editUser(data: InterfaceAccountUser.EditUser) {

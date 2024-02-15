@@ -4,7 +4,7 @@ import { Button } from 'primereact/button';
 import { Column } from 'primereact/column';
 import { DataTable } from 'primereact/datatable';
 import { Dialog } from 'primereact/dialog';
-import { FileUpload } from 'primereact/fileupload';
+import { FileUpload, FileUploadHandlerEvent } from 'primereact/fileupload';
 import { InputText } from 'primereact/inputtext';
 import { Rating } from 'primereact/rating';
 import { Toast } from 'primereact/toast';
@@ -15,25 +15,21 @@ import { Demo } from '../../../../types/types';
 import { Tag } from 'primereact/tag';
 import { Dropdown } from 'primereact/dropdown';
 import { Tooltip } from 'primereact/tooltip';
-import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
-import { classNames } from 'primereact/utils';
+import { InputTextarea } from 'primereact/inputtextarea';
 import { Paginator } from 'primereact/paginator';
 import { RadioButton } from 'primereact/radiobutton';
 import { CategoryAPI } from '../../../store/services/CategoryServices/CategoryAPI';
 import { Category, Producer } from '../../../../types/demo';
 import { ProducerAPI } from '../../../store/services/ProducerServices/ProducerAPI';
+import formatCurrency from '../../utilities/formatCurrency/page';
 import ActionsProduct from './ActionsProduct';
-import { Controller, SubmitHandler, useForm } from 'react-hook-form';
-
-interface Category {
-    name: string;
-    code: number;
-}
+import { Controller, useForm } from 'react-hook-form';
 
 interface Option {
+    id: number;
     name: string;
-    value: boolean;
+    value: string;
 }
 
 /* @todo Used 'as any' for types here. Will fix in next version due to onSelectionChange event type issue. */
@@ -92,6 +88,11 @@ const Crud = () => {
             isText: false
         },
         {
+            id: 6,
+            name: 'color',
+            isText: false
+        },
+        {
             id: 3,
             name: 'connection',
             isText: true
@@ -105,27 +106,66 @@ const Crud = () => {
             id: 5,
             name: 'rgb',
             isText: true
+        }
+    ];
+    const keyboardProperties = [
+        {
+            id: 1,
+            name: 'expand',
+            isText: false
+        },
+        {
+            id: 2,
+            name: 'material',
+            isText: false
+        },
+        {
+            id: 3,
+            name: 'switches',
+            isText: false
+        },
+        {
+            id: 4,
+            name: 'size',
+            isText: false
+        },
+        {
+            id: 5,
+            name: 'color',
+            isText: false
         },
         {
             id: 6,
-            name: 'color',
-            isText: false
+            name: 'connection',
+            isText: true
+        },
+        {
+            id: 7,
+            name: 'charger',
+            isText: true
+        },
+        {
+            id: 8,
+            name: 'rgb',
+            isText: true
         }
     ];
-    const PROPERTIES = [laptopProperties, mouseProperties];
-    const types: Category[] = [
-        { name: 'Laptop', code: 1 },
-        { name: 'Mouse', code: 2 },
-        { name: 'Keyboard', code: 3 }
+    const PROPERTIES = [laptopProperties, mouseProperties, keyboardProperties];
+    const types: Category.Category[] = [
+        { name: 'laptop', id: 1 },
+        { name: 'mouse', id: 2 },
+        { name: 'keyboard', id: 3 }
     ];
     const options: Option[] = [
         {
+            id: 1,
             name: 'Có',
-            value: true
+            value: 'true'
         },
         {
+            id: 2,
             name: 'Không',
-            value: false
+            value: 'false'
         }
     ];
 
@@ -139,32 +179,52 @@ const Crud = () => {
     const [selectedProducts, setSelectedProducts] = useState(null);
     const [globalFilter, setGlobalFilter] = useState('');
     const [currentPage, setCurrentPage] = useState<number>(0);
-    const [size, setSize] = useState<number>(2);
-    const [rows, setRows] = useState<number>(2);
+    const [size, setSize] = useState<number>(10);
+    const [rows, setRows] = useState<number>(10);
     const [fist, setFirst] = useState<number>(0);
-    const [selectedType, setSelectedType] = useState<Category | null>(types[0]);
-    const [selectCategory, setSelectCategory] = useState<Category | null>(types[0]);
-    const [selectProducer, setSelectProducer] = useState<number | undefined>();
+    const [selectedType, setSelectedType] = useState<Category.Category | null>(types[0]);
 
-    const [selectedOptions, setSelectedOptions] = useState<Option | null>(options[0]);
-    const {
-        register,
-        handleSubmit,
-        watch,
-        reset,
-        control,
-        setValue,
-        formState: { errors }
-    } = useForm<Demo.ProductRequest>();
+    const [loading, setLoading] = useState(false);
+    const [isEdit, setIsEdit] = useState(false);
 
+    const defaultValues = {
+        title: '',
+        oldPrice: 0,
+        saleRate: 0,
+        quantity: 0,
+        idCategory: 0,
+        idProducer: 0,
+        description: '',
+        properties: {}
+    };
+    const form = useForm({ defaultValues });
+
+    const errors = form.formState.errors;
     const toast = useRef<Toast>(null);
     const dt = useRef<DataTable<any>>(null);
 
     useEffect(() => {
+        if (isEdit) {
+            form.setValue('title', product?.title!);
+            form.setValue('oldPrice', product?.oldPrice!);
+            form.setValue('quantity', product?.quantity!);
+            form.setValue('description', product?.description!);
+            form.setValue('saleRate', product?.saleRate!);
+            form.setValue('idCategory', types.findIndex((e) => e.name === product?.type) + 1);
+            form.setValue('idProducer', producers.findIndex((e) => e.name === product?.producer) + 1);
+            product?.properties?.map((pr) => form.setValue(`properties.${pr.name}`, pr.properties));
+        } else {
+            form.reset();
+        }
+    }, [isEdit, product]);
+    useEffect(() => {
+        form.reset();
+    }, [selectedType]);
+    useEffect(() => {
         ProductAPi.getProduct({
             page: currentPage,
             size: size,
-            type: selectedType?.code
+            type: selectedType?.id
         }).then((data) => {
             setProducts(data);
         });
@@ -173,19 +233,10 @@ const Crud = () => {
         CategoryAPI.getCategory().then((data) => setCategories(data));
         ProducerAPI.getProducer().then((data) => setProducers(data));
     }, []);
-    const formatCurrency = (value: number) => {
-        return value.toLocaleString('en-US', {
-            style: 'currency',
-            currency: 'VND'
-        });
-    };
 
     const openNew = () => {
+        setIsEdit(false);
         setNewProductDialog(true);
-    };
-
-    const hideDeleteProductsDialog = () => {
-        setDeleteProductsDialog(false);
     };
 
     const exportCSV = () => {
@@ -194,19 +245,6 @@ const Crud = () => {
 
     const confirmDeleteSelected = () => {
         setDeleteProductsDialog(true);
-    };
-
-    const deleteSelectedProducts = () => {
-        let _products = (products as any)?.filter((val: any) => !(selectedProducts as any)?.includes(val));
-        setProducts(_products);
-        setDeleteProductsDialog(false);
-        setSelectedProducts(null);
-        toast.current?.show({
-            severity: 'success',
-            summary: 'Successful',
-            detail: 'Products Deleted',
-            life: 3000
-        });
     };
 
     const leftToolbarTemplate = () => {
@@ -239,12 +277,6 @@ const Crud = () => {
         </div>
     );
 
-    const deleteProductsDialogFooter = (
-        <>
-            <Button label="No" icon="pi pi-times" text onClick={hideDeleteProductsDialog} />
-            <Button label="Yes" icon="pi pi-check" text onClick={deleteSelectedProducts} />
-        </>
-    );
     const priceBodyTemplate = (product: any) => {
         return <p>{formatCurrency(product.oldPrice)}</p>;
     };
@@ -271,7 +303,13 @@ const Crud = () => {
     const actionBodyTemplate = (product: Demo.Product) => {
         return (
             <div className="flex justify-content-center align-items-center	gap-3">
-                <div style={{ marginTop: `0.5px` }} className="cursor-pointer text-yellow-500">
+                <div
+                    style={{ marginTop: `0.5px` }}
+                    className="cursor-pointer text-yellow-500"
+                    onClick={() => {
+                        setProduct(product), setNewProductDialog(true), setIsEdit(true);
+                    }}
+                >
                     <Tooltip target=".edit-user" />
                     <i className="edit-user pi pi-file-edit" data-pr-tooltip="Edit product" data-pr-position="top" style={{ fontSize: '1.2rem' }} />
                 </div>
@@ -282,7 +320,7 @@ const Crud = () => {
                 <div
                     className="cursor-pointer text-blue-500"
                     onClick={() => {
-                        setProduct(product), setProductDialog(true);
+                        setProduct(product), setProductDialog(true), setIsEdit(true);
                     }}
                 >
                     <Tooltip target=".delete-user" />
@@ -302,13 +340,69 @@ const Crud = () => {
     const footerBodyTemplate = () => {
         return (
             <div>
-                <Button label="Cancel" icon="pi pi-times" className="p-button-text" onClick={() => setNewProductDialog(false)} />
-                <Button label="Add" type="submit" icon="pi pi-check" autoFocus onClick={handleSubmit(onSubmit)} />
+                <Button label="Cancel" icon="pi pi-times" className="p-button-text" onClick={() => !loading && setNewProductDialog(false)} />
+                <Button label="Add" loading={loading} type="submit" icon="pi pi-check" autoFocus onClick={form.handleSubmit(onSubmit)} />
             </div>
         );
     };
-    const onSubmit: SubmitHandler<Demo.ProductRequest> = (data) => {
-        console.log(data);
+    let image = new FormData();
+    let imagePreview = new FormData();
+    const invoiceUploadImageHandler = (event: FileUploadHandlerEvent) => {
+        const file = event.files[0];
+        image.append('file', file);
+    };
+    const invoiceUploadPreviewImageHandler = (event: FileUploadHandlerEvent) => {
+        event.files.forEach((file) => {
+            imagePreview.append('file', file);
+        });
+    };
+
+    const uploadImage = async (id: number) => {
+        let res = true;
+        let message = 'Upload product success';
+        await ProductAPi.sendImage(image, id).then((d) => {
+            if (d.status !== 200) {
+                setLoading(false);
+                message = d.message;
+                return (res = false);
+            }
+        });
+        await ProductAPi.sendImagePreview(imagePreview, id).then((d) => {
+            if (d.status !== 200) {
+                setLoading(false);
+                message = d.message;
+                return (res = false);
+            }
+        });
+        setLoading(false);
+
+        if (res) {
+            return toast.current?.show({ severity: 'success', summary: 'Success', detail: message, life: 3000 });
+        } else {
+            return toast.current?.show({ severity: 'error', summary: 'Error', detail: message, life: 3000 });
+        }
+    };
+
+    const onSubmit = (data: any) => {
+        if (Array.from(image.keys()).length <= 0 || Array.from(imagePreview.keys()).length <= 0) {
+            return;
+        }
+        data.idCategory! = selectedType?.id;
+        data.saleRate = data.saleRate / 100;
+        if (data.properties.connection || data.properties.charger || data.properties.rgb) {
+            data.properties.connection = JSON.parse(data.properties.connection);
+            data.properties.charger = JSON.parse(data.properties.charger);
+            data.properties.rgb = JSON.parse(data.properties.rgb);
+        }
+        ProductAPi.addProduct(data, types[data.idCategory - 1].name).then((data) => {
+            setLoading(true);
+            if (data.status === 201) {
+                uploadImage(data.data.id);
+            } else {
+                setLoading(false);
+                toast.current?.show({ severity: 'error', summary: 'Error', detail: data.message, life: 3000 });
+            }
+        });
     };
     return (
         <div className="grid crud-demo">
@@ -347,13 +441,13 @@ const Crud = () => {
                     </DataTable>
                     <Paginator first={fist} rows={rows} totalRecords={products?.totalElements} onPageChange={onPageChange} />
 
-                    <Dialog visible={newProductDialog} header="Add New A Product" modal className="p-fluid w-6" onHide={() => setNewProductDialog(false)} footer={footerBodyTemplate}>
+                    <Dialog visible={newProductDialog} header="Add New A Product" modal className="p-fluid w-6" onHide={() => !loading && setNewProductDialog(false)} footer={footerBodyTemplate}>
                         <form>
                             <div className="field">
                                 <label htmlFor="name" className="font-medium">
                                     Title
                                 </label>
-                                <InputText id="name" {...register('title', { required: 'Title is required' })} />
+                                <InputText id="name" {...form.register('title', { required: 'Title is required' })} />
                                 {errors.title?.type === 'required' && <p className="text-red-500">{errors.title.message}</p>}
                             </div>
 
@@ -361,28 +455,14 @@ const Crud = () => {
                                 <label htmlFor="description" className="font-medium">
                                     Description
                                 </label>
-                                <InputTextarea id="description" {...register('description', { required: 'Description is required' })} rows={3} cols={20} />
+                                <InputTextarea id="description" {...form.register('description', { required: 'Description is required' })} rows={3} cols={20} />
                                 {errors.description?.type === 'required' && <p className="text-red-500">{errors.description.message}</p>}
-                            </div>
-
-                            <div className="field">
-                                <label className="mb-3 font-medium">Category</label>
-                                <div className="formgrid grid">
-                                    {categories?.map((category) => (
-                                        <div className="field-radiobutton col-6" key={category.id}>
-                                            <RadioButton inputId={category.name} value={category.id} name="category" onChange={(e) => setSelectCategory({ code: e.value, name: category.name })} checked={selectCategory?.code == category.id} />
-                                            <label htmlFor={category.name} className="cursor-pointer">
-                                                {category.name}
-                                            </label>
-                                        </div>
-                                    ))}
-                                </div>
                             </div>
 
                             <div className="field">
                                 <label className="mb-3 font-medium">Producer</label>
                                 <Controller
-                                    control={control}
+                                    control={form.control}
                                     name="idProducer"
                                     rules={{ required: 'Producer is required' }}
                                     render={({ field }) => (
@@ -402,44 +482,122 @@ const Crud = () => {
                                 {errors.idProducer?.type === 'required' && <p className="text-red-500">{errors.idProducer.message}</p>}
                             </div>
 
-                            <div className="formgrid grid">
-                                <div className="field col">
-                                    <label htmlFor="price" className="font-medium">
-                                        Price
-                                    </label>
-                                    <InputNumber id="price" mode="currency" currency="VND" locale="en-US" />
-                                </div>
-                                <div className="field col">
-                                    <label htmlFor="quantity" className="font-medium">
-                                        Quantity
-                                    </label>
-                                    <InputNumber id="quantity" />
-                                </div>
+                            <div className="field">
+                                <Controller
+                                    name="saleRate"
+                                    control={form.control}
+                                    rules={{
+                                        required: 'Sale Rate is required',
+                                        validate: (value) => (parseInt(value!) > 0 && parseInt(value!) < 100) || 'Enter valid sale rate 0% - 100%'
+                                    }}
+                                    render={({ field, fieldState }) => (
+                                        <>
+                                            <label htmlFor={field.name} className="mb-2 font-medium">
+                                                Sale Rate (%)
+                                            </label>
+                                            <InputNumber id={field.name} inputRef={field.ref} value={field.value!} onBlur={field.onBlur} onValueChange={(e: any) => field.onChange(e)} useGrouping={false} prefix="%" />
+                                        </>
+                                    )}
+                                />
+                                {errors.saleRate?.type === 'required' && <p className="text-red-500">{errors.saleRate.message}</p>}
+                                {errors.saleRate?.type === 'validate' && <p className="text-red-500">{errors.saleRate.message}</p>}
                             </div>
                             <div className="formgrid grid">
-                                {PROPERTIES[selectCategory?.code! - 1].map((property) => (
+                                <div className="field col">
+                                    <Controller
+                                        name="oldPrice"
+                                        control={form.control}
+                                        rules={{
+                                            required: 'Price is required',
+                                            validate: (value) => value! > 0 || 'Enter valid price'
+                                        }}
+                                        render={({ field, fieldState }) => (
+                                            <>
+                                                <label htmlFor={field.name} className="mb-2 font-medium">
+                                                    Price
+                                                </label>
+                                                <InputNumber id={field.name} inputRef={field.ref} value={field.value} onBlur={field.onBlur} onValueChange={(e) => field.onChange(e)} mode="currency" currency="VND" locale="en-US" useGrouping={false} />
+                                            </>
+                                        )}
+                                    />
+                                    {errors.oldPrice?.type === 'required' && <p className="text-red-500">{errors.oldPrice.message}</p>}
+                                    {errors.oldPrice?.type === 'validate' && <p className="text-red-500">{errors.oldPrice.message}</p>}
+                                </div>
+                                <div className="field col">
+                                    <Controller
+                                        name="quantity"
+                                        control={form.control}
+                                        rules={{
+                                            required: 'Quantity is required',
+                                            validate: (value) => value! > 0 || 'Enter valid quantity'
+                                        }}
+                                        render={({ field, fieldState }) => (
+                                            <>
+                                                <label htmlFor={field.name} className="mb-2 font-medium">
+                                                    Quantity
+                                                </label>
+                                                <InputNumber id={field.name} inputRef={field.ref} value={field.value} onBlur={field.onBlur} onValueChange={(e) => field.onChange(e)} useGrouping={false} />
+                                            </>
+                                        )}
+                                    />
+                                    {errors.quantity?.type === 'required' && <p className="text-red-500">{errors.quantity.message}</p>}
+                                    {errors.quantity?.type === 'validate' && <p className="text-red-500">{errors.quantity.message}</p>}
+                                </div>
+                            </div>
+
+                            <div className="formgrid grid">
+                                {PROPERTIES[selectedType?.id! - 1].map((property) => (
                                     <div className="col-6 mt-2" key={property.id}>
                                         {!property.isText ? (
                                             <div>
                                                 <label htmlFor={property.name} className="font-medium text-transform: capitalize">
                                                     {property.name}
                                                 </label>
-                                                <InputText className=" mr-3 mt-2" />
+                                                <InputText {...form.register(`${'properties.' + property.name}`, { required: 'properties is required' })} className=" mr-3 mt-2" />
                                             </div>
                                         ) : (
-                                            <div>
-                                                <label htmlFor={property.name} className="font-medium text-transform: capitalize">
-                                                    {property.name}
-                                                </label>
-                                                <Dropdown value={selectedOptions} onChange={(e: any) => setSelectedOptions(e.value)} options={options} optionLabel={'name'} placeholder="Select a type" className="w-full mr-3 mt-2" />
+                                            <div className="">
+                                                <div className="mb-2" s>
+                                                    <label htmlFor={property.name} className="font-medium text-transform: capitalize">
+                                                        {property.name}
+                                                    </label>
+                                                </div>
+                                                <Controller
+                                                    control={form.control}
+                                                    name={`${'properties.' + property.name}`}
+                                                    rules={{ required: 'Producer is required' }}
+                                                    render={({ field }) => (
+                                                        <div className="formgrid grid">
+                                                            {options.map((producer) => (
+                                                                <div className="field-radiobutton col-6" key={producer.id}>
+                                                                    <RadioButton inputId={producer.name} {...field} value={producer.value} inputRef={field.ref} name={producer.name} checked={producer.value == field.value} />
+                                                                    <label htmlFor={producer.name} className="cursor-pointer">
+                                                                        {producer.name}
+                                                                    </label>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                ></Controller>
+
+                                                {errors.properties?.type === 'required' && <p className="text-red-500">{errors.properties.message}</p>}
                                             </div>
                                         )}
                                     </div>
                                 ))}
                             </div>
+
+                            <div className="field mt-3">
+                                <label className="mb-3 font-medium">Image</label>
+                                <FileUpload name="files" customUpload multiple accept="image/*" maxFileSize={1000000} uploadHandler={invoiceUploadImageHandler} emptyTemplate={<p className="m-0">Drag and drop files to here to upload.</p>} />
+                            </div>
+                            <div className="field mt-3">
+                                <label className="mb-3 font-medium">Preview Image</label>
+                                <FileUpload name="files" customUpload multiple accept="image/*" maxFileSize={1000000} uploadHandler={invoiceUploadPreviewImageHandler} emptyTemplate={<p className="m-0">Drag and drop files to here to upload.</p>} />
+                            </div>
                         </form>
                     </Dialog>
-                    <ActionsProduct product={product} productDialog={productDialog} setProductDialog={setProductDialog}></ActionsProduct>
+                    <ActionsProduct product={product} productDialog={productDialog} isEdit={isEdit} setProductDialog={setProductDialog}></ActionsProduct>
 
                     {/* <Dialog visible={deleteProductDialog} style={{ width: '450px' }} header="Confirm" modal footer={deleteProductDialogFooter} onHide={hideDeleteProductDialog}>
                         <div className="flex align-items-center justify-content-center">
@@ -452,12 +610,12 @@ const Crud = () => {
                         </div>
                     </Dialog> */}
 
-                    <Dialog visible={deleteProductsDialog} style={{ width: '450px' }} header="Confirm" modal footer={deleteProductsDialogFooter} onHide={hideDeleteProductsDialog}>
+                    {/* <Dialog visible={deleteProductsDialog} style={{ width: '450px' }} header="Confirm" modal footer={deleteProductsDialogFooter} onHide={hideDeleteProductsDialog}>
                         <div className="flex align-items-center justify-content-center">
                             <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem' }} />
                             {product && <span>Are you sure you want to delete the selected products?</span>}
                         </div>
-                    </Dialog>
+                    </Dialog> */}
                 </div>
             </div>
         </div>

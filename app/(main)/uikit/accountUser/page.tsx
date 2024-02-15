@@ -168,7 +168,7 @@ const TableDemo = () => {
         setIsExitEmail(false);
     }, [debouncedValue]);
 
-    const confirmDeleteUser = (id: Number) => {
+    const confirmDeleteUser = (id: number) => {
         confirmDialog({
             message: `Are you sure you want to delete user with id = ${id}?`,
             header: 'Delete User',

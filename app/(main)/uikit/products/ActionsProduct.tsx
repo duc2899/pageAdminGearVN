@@ -13,8 +13,9 @@ interface OptionActionsProduct {
     product: Demo.Product | undefined;
     productDialog: boolean | undefined;
     setProductDialog: any;
+    isEdit: boolean | undefined;
 }
-function ActionsProduct({ product, productDialog, setProductDialog }: OptionActionsProduct) {
+function ActionsProduct({ product, productDialog, setProductDialog, isEdit }: OptionActionsProduct) {
     const [categories, setCategories] = useState<Category.Category[]>([]);
     const [producers, setProducers] = useState<Producer.Producer[]>([]);
     useEffect(() => {
@@ -30,7 +31,7 @@ function ActionsProduct({ product, productDialog, setProductDialog }: OptionActi
         );
     };
     return (
-        <Dialog visible={productDialog} header="Product Details" modal className="p-fluid w-6" onHide={() => setProductDialog(false)} footer={footerBodyTemplate}>
+        <Dialog visible={productDialog} header={isEdit ? 'Product Details' : 'Edit Product'} modal className="p-fluid w-6" onHide={() => setProductDialog(false)} footer={!isEdit && footerBodyTemplate}>
             {product?.image && <img src={`${product.image}`} alt={product.image} width="150" className="mt-0 mx-auto mb-5 block" />}
             {product?.previewImages.length! > 0 && (
                 <>
@@ -51,7 +52,7 @@ function ActionsProduct({ product, productDialog, setProductDialog }: OptionActi
                     <label htmlFor="id" className="font-medium">
                         ID
                     </label>
-                    <InputNumber id="id" value={product?.id} />
+                    <InputNumber readOnly={isEdit} id="id" value={product?.id} />
                 </div>
             )}
             <div className="field">
@@ -62,7 +63,7 @@ function ActionsProduct({ product, productDialog, setProductDialog }: OptionActi
                     id="name"
                     value={product?.title}
                     // onChange={(e) => onInputChange(e, 'name')}
-                    required
+                    readOnly={isEdit}
                 />
             </div>
 
@@ -90,7 +91,7 @@ function ActionsProduct({ product, productDialog, setProductDialog }: OptionActi
                 <div className="formgrid grid">
                     {producers?.map((producer) => (
                         <div className="field-radiobutton col-6" key={producer.id}>
-                            <RadioButton inputId="category1" name="category" value="Accessories" checked={product?.producer === producer.name} />
+                            <RadioButton readOnly={isEdit} inputId="category1" name="category" value="Accessories" checked={product?.producer === producer.name} />
                             <label htmlFor="category1">{producer.name}</label>
                         </div>
                     ))}
@@ -102,13 +103,13 @@ function ActionsProduct({ product, productDialog, setProductDialog }: OptionActi
                     <label htmlFor="price" className="font-medium">
                         Price
                     </label>
-                    <InputNumber id="price" value={product?.oldPrice} mode="currency" currency="VND" locale="en-US" />
+                    <InputNumber readOnly={isEdit} id="price" value={product?.oldPrice} mode="currency" currency="VND" locale="en-US" />
                 </div>
                 <div className="field col">
                     <label htmlFor="quantity" className="font-medium">
                         Quantity
                     </label>
-                    <InputNumber id="quantity" value={product?.quantity} />
+                    <InputNumber readOnly={isEdit} id="quantity" value={product?.quantity} />
                 </div>
             </div>
 
@@ -120,7 +121,7 @@ function ActionsProduct({ product, productDialog, setProductDialog }: OptionActi
                                 {property.name}
                             </label>
                         </div>
-                        <InputText id="property" className="w-fit" value={property.properties} />
+                        <InputText readOnly={isEdit} id="property" className="w-fit" value={property.properties} />
                     </div>
                 ))}
             </div>
