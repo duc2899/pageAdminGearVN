@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 import { useRouter } from 'next/navigation';
-import React, { useContext, useRef, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Checkbox } from 'primereact/checkbox';
 import { Button } from 'primereact/button';
 import { Password } from 'primereact/password';
@@ -12,15 +12,18 @@ import { Controller, useForm } from 'react-hook-form';
 import { Login } from '../../../../types/demo';
 import { Toast } from 'primereact/toast';
 import { AuthAccount } from '../../../store/services/AuthServices/AuthAccountAPI';
+import SetCookie from '../../../(main)/utilities/cookies/setCookie';
+import DeleteCookie from '../../../(main)/utilities/cookies/deleteCookie';
+import GetCookie from '../../../(main)/utilities/cookies/getCookie';
 
 const LoginPage = () => {
     const toast = useRef<Toast>(null);
     const [checked, setChecked] = useState(false);
     const { layoutConfig } = useContext(LayoutContext);
-
     const {
         handleSubmit,
         control,
+        setValue,
         formState: { errors }
     } = useForm<Login.loginRequest>();
     const router = useRouter();
@@ -28,14 +31,41 @@ const LoginPage = () => {
     const containerClassName = classNames('surface-ground flex align-items-center justify-content-center min-h-screen min-w-screen overflow-hidden', { 'p-input-filled': layoutConfig.inputStyle === 'filled' });
 
     const onSubmit = (data: any) => {
-        AuthAccount.login(data).then((d) => {
+        if (checked) {
+            SetCookie(
+                'remember',
+                {
+                    checked: checked,
+                    ...data
+                },
+                2
+            );
+        } else {
+            DeleteCookie('remember');
+        }
+        AuthAccount.login(data).then((d: any) => {
             if (d.status === 200) {
+                SetCookie(
+                    'user',
+                    {
+                        ...d.data
+                    },
+                    1
+                );
                 toast.current?.show({ severity: 'success', summary: 'Success', detail: 'Login success', life: 3000 });
+                router.push('/');
             } else {
                 toast.current?.show({ severity: 'error', summary: 'Error', detail: d.message, life: 3000 });
             }
         });
     };
+    useEffect(() => {
+        if (GetCookie('remember')) {
+            setChecked(true);
+            setValue('email', GetCookie('remember').email);
+            setValue('password', GetCookie('remember').password);
+        }
+    }, []);
     return (
         <div className={containerClassName}>
             <Toast ref={toast} />
@@ -75,7 +105,7 @@ const LoginPage = () => {
                                             <InputText id={field.name} value={field.value} className="w-full" onChange={(e) => field.onChange(e.target.value)} />
                                         </span>
                                         {errors.email?.type === 'required' && <p className="text-red-500">{errors.email.message}</p>}
-                                        {errors.email?.type === 'validate' && <p className="text-red-500">{errors.email.message}</p>}
+                                        {errors.email?.type === 'pattern' && <p className="text-red-500">{errors.email.message}</p>}
                                     </>
                                 )}
                             />

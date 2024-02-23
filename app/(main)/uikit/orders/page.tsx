@@ -19,19 +19,19 @@ type StatusBill = {
 function Orders() {
     const statusTemplate: StatusBill[] = [
         {
-            name: 'Đơn hàng đã đặt',
+            name: 'Order placed',
             id: 1
         },
         {
-            name: 'Tiếp nhận và xử lý',
+            name: 'Receiving and processing',
             id: 2
         },
         {
-            name: 'Đang giao hàng',
+            name: 'Delivering',
             id: 3
         },
         {
-            name: 'Đã giao hàng',
+            name: 'Delivered',
             id: 4
         }
     ];

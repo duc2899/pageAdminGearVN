@@ -11,149 +11,120 @@ import { LayoutContext } from '../../layout/context/layoutcontext';
 import Link from 'next/link';
 import { Demo } from '../../types/types';
 import { ChartData, ChartOptions } from 'chart.js';
-
-const lineData: ChartData = {
-    labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
-    datasets: [
-        {
-            label: 'First Dataset',
-            data: [65, 59, 80, 81, 56, 55, 40],
-            fill: false,
-            backgroundColor: '#2f4860',
-            borderColor: '#2f4860',
-            tension: 0.4
-        },
-        {
-            label: 'Second Dataset',
-            data: [28, 48, 40, 19, 86, 27, 90],
-            fill: false,
-            backgroundColor: '#00bb7e',
-            borderColor: '#00bb7e',
-            tension: 0.4
-        }
-    ]
-};
+import { Feedback, Orders } from '../../types/demo';
+import { OrdersAPI } from '../store/services/OrdersServices/OrdersAPI';
+import { AccountAPi } from '../store/services/AccountServices/AccountAPI';
+import { FeedbackAPI } from '../store/services/FeedbackServices/FeedbackAPI';
+import { ChartMonthAPI } from '../store/services/ChartServices/ChartMonthAPI';
 
 const Dashboard = () => {
     const [products, setProducts] = useState<Demo.Product[]>([]);
     const menu1 = useRef<Menu>(null);
     const menu2 = useRef<Menu>(null);
     const [lineOptions, setLineOptions] = useState<ChartOptions>({});
-    const { layoutConfig } = useContext(LayoutContext);
+    const [orders, setOrders] = useState<Orders.OrderResponse[]>([]);
+    const [customers, setCustomers] = useState<Demo.Customer[]>([]);
+    const [feedbacks, setFeedbacks] = useState<Feedback.feedbackResponse[]>([]);
+    const [dataChartMonth, setDataChartMonth] = useState<number[]>([]);
 
-    const applyLightTheme = () => {
-        const lineOptions: ChartOptions = {
-            plugins: {
-                legend: {
-                    labels: {
-                        color: '#495057'
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    ticks: {
-                        color: '#495057'
-                    },
-                    grid: {
-                        color: '#ebedef'
-                    }
-                },
-                y: {
-                    ticks: {
-                        color: '#495057'
-                    },
-                    grid: {
-                        color: '#ebedef'
-                    }
-                }
+    const lineData: ChartData = {
+        labels: getListMonth(),
+        datasets: [
+            {
+                label: 'Month',
+                data: dataChartMonth,
+                fill: false,
+                backgroundColor: '#2f4860',
+                borderColor: '#2f4860',
+                tension: 0.4
             }
-        };
-
-        setLineOptions(lineOptions);
+        ]
     };
 
-    const applyDarkTheme = () => {
-        const lineOptions = {
-            plugins: {
-                legend: {
-                    labels: {
-                        color: '#ebedef'
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    ticks: {
-                        color: '#ebedef'
-                    },
-                    grid: {
-                        color: 'rgba(160, 167, 181, .3)'
-                    }
-                },
-                y: {
-                    ticks: {
-                        color: '#ebedef'
-                    },
-                    grid: {
-                        color: 'rgba(160, 167, 181, .3)'
-                    }
-                }
-            }
-        };
-
-        setLineOptions(lineOptions);
-    };
-
+    function getListMonth() {
+        const labels = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const currentMonth = new Date().getMonth();
+        return labels.slice(0, currentMonth + 1);
+    }
     useEffect(() => {
         ProductService.getProductsSmall().then((data) => setProducts(data));
     }, []);
 
-    useEffect(() => {
-        if (layoutConfig.colorScheme === 'light') {
-            applyLightTheme();
-        } else {
-            applyDarkTheme();
-        }
-    }, [layoutConfig.colorScheme]);
-
     const formatCurrency = (value: number) => {
-        return value?.toLocaleString('en-US', {
+        return value?.toLocaleString('vi-VN', {
             style: 'currency',
-            currency: 'USD'
+            currency: 'VND'
         });
     };
+    const calculateBill = (status: number) => {
+        return orders.filter((order) => order.statusBill == status).length;
+    };
 
+    const today = new Date();
+    const newUsersCount = customers.reduce((count, user) => {
+        const userCreatedAt = new Date(user.createdAt);
+        const isSameDate = userCreatedAt.getDate() === today.getDate() && userCreatedAt.getMonth() === today.getMonth() && userCreatedAt.getFullYear() === today.getFullYear();
+
+        if (isSameDate) {
+            return count + 1;
+        }
+        return count;
+    }, 0);
+    const newFeedback = feedbacks.reduce((count, feedback) => {
+        const userCreatedAt = new Date(feedback.createdDate);
+        const isSameDate = userCreatedAt.getDate() === today.getDate() && userCreatedAt.getMonth() === today.getMonth() && userCreatedAt.getFullYear() === today.getFullYear();
+
+        if (isSameDate) {
+            return count + 1;
+        }
+        return count;
+    }, 0);
+    useEffect(() => {
+        OrdersAPI.getOrders().then((data: any) => {
+            setOrders(data);
+        });
+        AccountAPi.getListUsers().then((data) => {
+            setCustomers(data.filter((d) => d.role === 'USER'));
+        });
+        FeedbackAPI.getAllFeedback().then((d) => setFeedbacks(d.data));
+        ChartMonthAPI.getChartMonth().then((d) => setDataChartMonth(d.data.listRevenue));
+    }, []);
     return (
         <div className="grid">
             <div className="col-12 lg:col-6 xl:col-3">
-                <div className="card mb-0">
+                <div className="card mb-0 w-auto">
                     <div className="flex justify-content-between mb-3">
                         <div>
                             <span className="block text-500 font-medium mb-3">Orders</span>
-                            <div className="text-900 font-medium text-xl">152</div>
+                            <div className="text-900 font-medium text-xl">{orders.length}</div>
                         </div>
                         <div className="flex align-items-center justify-content-center bg-blue-100 border-round" style={{ width: '2.5rem', height: '2.5rem' }}>
                             <i className="pi pi-shopping-cart text-blue-500 text-xl" />
                         </div>
                     </div>
-                    <span className="text-green-500 font-medium">24 new </span>
-                    <span className="text-500">since last visit</span>
+                    <div className="flex gap-3">
+                        <div className="">
+                            <div className="text-red-500 font-medium mt-1">Ordered: {calculateBill(1)} </div>
+                            <div className="text-yellow-500 font-medium mt-1">Processing: {calculateBill(2)} </div>
+                        </div>
+                        <div>
+                            <div className="text-purple-500 font-medium mt-1">Delivering: {calculateBill(3)} </div>
+                            <div className="text-green-500 font-medium mt-1">Delivered: {calculateBill(4)} </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div className="col-12 lg:col-6 xl:col-3">
-                <div className="card mb-0">
+            <div className="col-12 lg:col-6 xl:col-3 ">
+                <div className="card mb-0 h-6">
                     <div className="flex justify-content-between mb-3">
                         <div>
                             <span className="block text-500 font-medium mb-3">Revenue</span>
-                            <div className="text-900 font-medium text-xl">$2.100</div>
+                            <div className="text-900 font-medium text-xl">{formatCurrency(dataChartMonth.reduce((accumulator, currentValue) => accumulator + currentValue, 0))}</div>
                         </div>
                         <div className="flex align-items-center justify-content-center bg-orange-100 border-round" style={{ width: '2.5rem', height: '2.5rem' }}>
                             <i className="pi pi-map-marker text-orange-500 text-xl" />
                         </div>
                     </div>
-                    <span className="text-green-500 font-medium">%52+ </span>
-                    <span className="text-500">since last week</span>
                 </div>
             </div>
             <div className="col-12 lg:col-6 xl:col-3">
@@ -161,13 +132,13 @@ const Dashboard = () => {
                     <div className="flex justify-content-between mb-3">
                         <div>
                             <span className="block text-500 font-medium mb-3">Customers</span>
-                            <div className="text-900 font-medium text-xl">28441</div>
+                            <div className="text-900 font-medium text-xl">{customers.length}</div>
                         </div>
                         <div className="flex align-items-center justify-content-center bg-cyan-100 border-round" style={{ width: '2.5rem', height: '2.5rem' }}>
                             <i className="pi pi-inbox text-cyan-500 text-xl" />
                         </div>
                     </div>
-                    <span className="text-green-500 font-medium">520 </span>
+                    <span className="text-green-500 font-medium">{newUsersCount} </span>
                     <span className="text-500">newly registered</span>
                 </div>
             </div>
@@ -175,15 +146,15 @@ const Dashboard = () => {
                 <div className="card mb-0">
                     <div className="flex justify-content-between mb-3">
                         <div>
-                            <span className="block text-500 font-medium mb-3">Comments</span>
-                            <div className="text-900 font-medium text-xl">152 Unread</div>
+                            <span className="block text-500 font-medium mb-3">FeedBacks</span>
+                            <div className="text-900 font-medium text-xl">{feedbacks.length}</div>
                         </div>
                         <div className="flex align-items-center justify-content-center bg-purple-100 border-round" style={{ width: '2.5rem', height: '2.5rem' }}>
                             <i className="pi pi-comment text-purple-500 text-xl" />
                         </div>
                     </div>
-                    <span className="text-green-500 font-medium">85 </span>
-                    <span className="text-500">responded</span>
+                    <span className="text-green-500 font-medium">{newFeedback} </span>
+                    <span className="text-500">newly</span>
                 </div>
             </div>
 

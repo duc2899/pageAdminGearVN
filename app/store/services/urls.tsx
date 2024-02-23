@@ -2,7 +2,7 @@ export const SERVER_ENDPOINT = 'http://localhost:8080/api/private/admin';
 export const AUTH_ACCOUNT = 'http://localhost:8080/api/public';
 export const URL_LOGIN = '/auth/login/admin';
 export const URL_LOGOUT = '/auth/logout';
-
+export const CHECK_TOKEN = '/auth/checkToken';
 export enum Account_Services {
     GET_LIST_USERS = '/accountUsers',
     EDIT_USER = '/accountUsers',
@@ -44,4 +44,8 @@ export enum DiscountCode_Services {
 export enum Feedback_Services {
     GET_ALL_FEEDBACK = '/feedbackProduct',
     DELETE_FEEDBACK = '/feedbackProduct'
+}
+
+export enum Chart_Services {
+    GET_CHART_MONTH = '/chart'
 }
